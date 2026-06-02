@@ -169,13 +169,15 @@ photogear/
 
 ## Notas de producción
 
-1. **Fotos**: actualmente se almacenan como base64 en la BD. Para alto volumen,
-   considera guardar archivos en disco y almacenar solo la ruta.
+- **Contraseñas**: nunca incluyas contraseñas de producción en `config.properties`
+  dentro del WAR. Usa variables de entorno o JNDI DataSource.
 
-2. **CORS**: en producción, reemplaza `*` en `web.xml` por el dominio real del frontend.
+- **CORS**: configura el origen real antes de desplegar:
+  ```bash
+  # setenv.sh de Tomcat
+  JAVA_OPTS="$JAVA_OPTS -Dcors.allowed.origins=https://tuapp.com"
+  ```
+  O edita `cors.allowed.origins` en `config.properties`.
 
-3. **Contraseñas**: nunca incluyas contraseñas de producción en `config.properties`
-   dentro del WAR. Usa variables de entorno o JNDI DataSource.
-
-4. **Conexiones**: para producción, reemplaza `DriverManager.getConnection()` por
-   un pool de conexiones (HikariCP, c3p0 o JNDI DataSource de Tomcat).
+- **Pool de conexiones**: incluido vía HikariCP. Ajusta los parámetros
+  `hikari.*` en `config.properties` según la carga esperada.

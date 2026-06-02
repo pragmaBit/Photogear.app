@@ -34,9 +34,8 @@ let state = {
   items:      [],
   view:       'dashboard',
   selectedId: null,
-  editMode:   false,         // true = editar, false = agregar
+  editMode:   false,
   filter:     { category: 'all', status: 'all', search: '' },
-  formPhotos: [],            // base64 strings de fotos en el form
 };
 
 /* ── Utilidades ─────────────────────────────────────────────── */
@@ -63,39 +62,16 @@ function catIcon(cat) {
   return CAT[cat]?.icon || '📷';
 }
 
-async function resizeImage(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 800;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else       { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', 0.78));
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 /* ── Datos de muestra ───────────────────────────────────────── */
 const SAMPLE = [
-  { id:'s1', category:'camera',    brand:'Canon',      model:'EOS R5',               serialNumber:'CR5-082341',    purchaseDate:'2021-08-15', purchasePrice:65000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2023-08-15', warrantyProvider:'Canon México', insuranceHas:true,  insuranceProvider:'GNP Seguros', insurancePolicyNumber:'GNP-4892', insuranceExpiry:'2025-12-31', notes:'Body principal. Batería LP-E6NH.', photos:'[]', createdAt:'2021-08-15T10:00:00' },
-  { id:'s2', category:'lens',      brand:'Canon',      model:'RF 50mm f/1.2L USM',   serialNumber:'RF50-29183',    purchaseDate:'2022-01-10', purchasePrice:48000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2024-01-10', warrantyProvider:'Canon México', insuranceHas:true,  insuranceProvider:'GNP Seguros', insurancePolicyNumber:'GNP-4892', insuranceExpiry:'2025-12-31', notes:'Lente principal para retratos. Filtro UV 77mm.', photos:'[]', createdAt:'2022-01-10T10:00:00' },
-  { id:'s3', category:'lens',      brand:'Canon',      model:'RF 24-70mm f/2.8L IS', serialNumber:'RF2470-11047',  purchaseDate:'2022-06-20', purchasePrice:55000, condition:'good',      status:'active',  warrantyHas:true,  warrantyExpiry:'2024-06-20', warrantyProvider:'Canon México', insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Zoom polivalente. Marca menor en barrel.', photos:'[]', createdAt:'2022-06-20T10:00:00' },
-  { id:'s4', category:'camera',    brand:'DIY',        model:'Pinhole 4×5"',         serialNumber:'PINHOLE-001',   purchaseDate:'2019-04-28', purchasePrice:850,   condition:'good',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Construida en cedro. f/138. WPPD 2019.', photos:'[]', createdAt:'2019-04-28T10:00:00' },
-  { id:'s5', category:'tripod',    brand:'Manfrotto',  model:'055XPRO3 + 496RC2',    serialNumber:'MNF055-88321',  purchaseDate:'2020-03-05', purchasePrice:9500,  condition:'good',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Incluye cabezal 496RC2.', photos:'[]', createdAt:'2020-03-05T10:00:00' },
-  { id:'s6', category:'lighting',  brand:'Canon',      model:'Speedlite 600EX II-RT',serialNumber:'FL600-77412',   purchaseDate:'2021-11-20', purchasePrice:12000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2023-11-20', warrantyProvider:'Canon México', insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Flash principal. Pilas Eneloop Pro.', photos:'[]', createdAt:'2021-11-20T10:00:00' },
-  { id:'s7', category:'bag',       brand:'Lowepro',    model:'ProTactic 450 AW II',  serialNumber:'LP-PT450-39182',purchaseDate:'2021-09-01', purchasePrice:6500,  condition:'fair',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Zipper lateral con desgaste.', photos:'[]', createdAt:'2021-09-01T10:00:00' },
-  { id:'s8', category:'accessory', brand:'Hoya',       model:'Kit Filtros ND 77mm',  serialNumber:'HOYA-ND77-21', purchaseDate:'2021-10-15', purchasePrice:3200,  condition:'good',      status:'stolen', warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'ND4, ND8, ND64, ND1000.', reportDate:'2023-09-10', reportDetails:'Sustraído en Xochimilco. Denuncia FGJ-CDMX folio #2023-XC-08821.', photos:'[]', createdAt:'2021-10-15T10:00:00' },
+  { id:'s1', category:'camera',    brand:'Canon',      model:'EOS R5',               serialNumber:'CR5-082341',    purchaseDate:'2021-08-15', purchasePrice:65000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2023-08-15', warrantyProvider:'Canon México', insuranceHas:true,  insuranceProvider:'GNP Seguros', insurancePolicyNumber:'GNP-4892', insuranceExpiry:'2025-12-31', notes:'Body principal. Batería LP-E6NH.', createdAt:'2021-08-15T10:00:00' },
+  { id:'s2', category:'lens',      brand:'Canon',      model:'RF 50mm f/1.2L USM',   serialNumber:'RF50-29183',    purchaseDate:'2022-01-10', purchasePrice:48000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2024-01-10', warrantyProvider:'Canon México', insuranceHas:true,  insuranceProvider:'GNP Seguros', insurancePolicyNumber:'GNP-4892', insuranceExpiry:'2025-12-31', notes:'Lente principal para retratos. Filtro UV 77mm.', createdAt:'2022-01-10T10:00:00' },
+  { id:'s3', category:'lens',      brand:'Canon',      model:'RF 24-70mm f/2.8L IS', serialNumber:'RF2470-11047',  purchaseDate:'2022-06-20', purchasePrice:55000, condition:'good',      status:'active',  warrantyHas:true,  warrantyExpiry:'2024-06-20', warrantyProvider:'Canon México', insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Zoom polivalente. Marca menor en barrel.', createdAt:'2022-06-20T10:00:00' },
+  { id:'s4', category:'camera',    brand:'DIY',        model:'Pinhole 4×5"',         serialNumber:'PINHOLE-001',   purchaseDate:'2019-04-28', purchasePrice:850,   condition:'good',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Construida en cedro. f/138. WPPD 2019.', createdAt:'2019-04-28T10:00:00' },
+  { id:'s5', category:'tripod',    brand:'Manfrotto',  model:'055XPRO3 + 496RC2',    serialNumber:'MNF055-88321',  purchaseDate:'2020-03-05', purchasePrice:9500,  condition:'good',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Incluye cabezal 496RC2.', createdAt:'2020-03-05T10:00:00' },
+  { id:'s6', category:'lighting',  brand:'Canon',      model:'Speedlite 600EX II-RT',serialNumber:'FL600-77412',   purchaseDate:'2021-11-20', purchasePrice:12000, condition:'excellent', status:'active',  warrantyHas:true,  warrantyExpiry:'2023-11-20', warrantyProvider:'Canon México', insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Flash principal. Pilas Eneloop Pro.', createdAt:'2021-11-20T10:00:00' },
+  { id:'s7', category:'bag',       brand:'Lowepro',    model:'ProTactic 450 AW II',  serialNumber:'LP-PT450-39182',purchaseDate:'2021-09-01', purchasePrice:6500,  condition:'fair',      status:'active',  warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'Zipper lateral con desgaste.', createdAt:'2021-09-01T10:00:00' },
+  { id:'s8', category:'accessory', brand:'Hoya',       model:'Kit Filtros ND 77mm',  serialNumber:'HOYA-ND77-21', purchaseDate:'2021-10-15', purchasePrice:3200,  condition:'good',      status:'stolen', warrantyHas:false, warrantyExpiry:'',           warrantyProvider:'',              insuranceHas:false, insuranceProvider:'',            insurancePolicyNumber:'',         insuranceExpiry:'',           notes:'ND4, ND8, ND64, ND1000.', reportDate:'2023-09-10', reportDetails:'Sustraído en Xochimilco. Denuncia FGJ-CDMX folio #2023-XC-08821.', createdAt:'2021-10-15T10:00:00' },
 ];
 
 /* ════════════════════════════════════════════════════════════
@@ -263,10 +239,6 @@ async function loadDashboard() {
 }
 
 function thumbHtml(item) {
-  try {
-    const photos = JSON.parse(item.photos || '[]');
-    if (photos.length) return `<img src="${photos[0]}" alt="">`;
-  } catch {}
   return catIcon(item.category);
 }
 
@@ -360,9 +332,6 @@ async function openDetail(id) {
   const item = res.data;
   state.selectedId = id;
 
-  let photos = [];
-  try { photos = JSON.parse(item.photos || '[]'); } catch {}
-
   const cat = CAT[item.category] || { label: item.category, icon: '📷' };
 
   document.getElementById('detail-content').innerHTML = `
@@ -396,19 +365,6 @@ async function openDetail(id) {
           ${item.reportDetails ? `<strong>Detalles:</strong> ${esc(item.reportDetails)}` : ''}
         </div>
       </div>` : ''}
-
-    <!-- Fotos -->
-    <div class="w3-card-4 section-card">
-      <div class="section-title">📸 Fotografías</div>
-      ${photos.length ? `
-        <div class="gallery">
-          ${photos.map((p,i) => `<img class="gallery-img" src="${p}" alt="Foto ${i+1}" onclick="openLightbox('${id}',${i})">`).join('')}
-        </div>` : `
-        <div class="photo-placeholder">
-          <span style="font-size:28px;opacity:.4">📷</span>
-          <span>Sin fotos registradas</span>
-        </div>`}
-    </div>
 
     <!-- Información general -->
     <div class="w3-card-4 section-card">
@@ -461,9 +417,6 @@ async function openDetail(id) {
       </div>` : ''}
   `;
 
-  // Guardar fotos en estado para el lightbox
-  state._detailPhotos = photos;
-
   showPage('detail');
 }
 
@@ -475,22 +428,12 @@ function infoItem(label, value, mono = false) {
     </div>`;
 }
 
-/* ── Lightbox ────────────────────────────────────────────────── */
-function openLightbox(id, idx) {
-  const photos = state._detailPhotos || [];
-  if (!photos[idx]) return;
-  const lb = document.getElementById('lightbox');
-  document.getElementById('lightbox-img').src = photos[idx];
-  lb.classList.add('open');
-}
-
 /* ════════════════════════════════════════════════════════════
    FORMULARIO (Agregar / Editar)
 ═══════════════════════════════════════════════════════════ */
 function openAddForm() {
-  state.editMode  = false;
+  state.editMode   = false;
   state.selectedId = null;
-  state.formPhotos = [];
   document.getElementById('form-title').textContent = 'Agregar equipo';
   fillForm({});
   showPage('form');
@@ -502,7 +445,6 @@ async function openEditForm(id) {
   const item = res.data;
   state.editMode   = true;
   state.selectedId = id;
-  try { state.formPhotos = JSON.parse(item.photos || '[]'); } catch { state.formPhotos = []; }
   document.getElementById('form-title').textContent = 'Editar equipo';
   fillForm(item);
   showPage('form');
@@ -528,7 +470,6 @@ function fillForm(item) {
   f('f-notes').value             = item.notes             || '';
   toggleWarrantyFields();
   toggleInsuranceFields();
-  renderPhotoPreview();
 }
 
 function toggleWarrantyFields() {
@@ -538,32 +479,6 @@ function toggleWarrantyFields() {
 function toggleInsuranceFields() {
   const show = document.getElementById('f-insurance-has').checked;
   document.getElementById('insurance-fields').style.display = show ? 'grid' : 'none';
-}
-
-function renderPhotoPreview() {
-  const wrap = document.getElementById('photo-preview');
-  wrap.innerHTML = state.formPhotos.map((p, i) => `
-    <div class="photo-prev-item">
-      <img class="photo-prev-img" src="${p}" alt="">
-      <button class="photo-prev-del" onclick="removePhoto(${i})">✕</button>
-    </div>`).join('');
-}
-
-function removePhoto(idx) {
-  state.formPhotos.splice(idx, 1);
-  renderPhotoPreview();
-}
-
-async function handlePhotoInput(input) {
-  if (!input.files.length) return;
-  const remaining = 5 - state.formPhotos.length;
-  const files = Array.from(input.files).slice(0, remaining);
-  for (const f of files) {
-    const b64 = await resizeImage(f);
-    state.formPhotos.push(b64);
-  }
-  input.value = '';
-  renderPhotoPreview();
 }
 
 async function saveForm() {
@@ -594,7 +509,6 @@ async function saveForm() {
     insurancePolicyNumber:f('f-insurance-policy').value.trim(),
     insuranceExpiry:      f('f-insurance-expiry').value || null,
     notes:                f('f-notes').value.trim(),
-    photos:               JSON.stringify(state.formPhotos),
   };
 
   const btn = document.getElementById('btn-save');
@@ -684,11 +598,6 @@ async function init() {
   // Modo offline: usa LocalDB, sin auth
 
   loadDashboard();
-
-  // Cerrar lightbox al hacer clic fuera
-  document.getElementById('lightbox').addEventListener('click', e => {
-    if (e.target.id === 'lightbox') e.target.classList.remove('open');
-  });
 
   // Búsqueda en tiempo real
   let searchTimer;

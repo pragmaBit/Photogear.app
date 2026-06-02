@@ -1,5 +1,6 @@
 package app.photogear.filter;
 
+import app.photogear.util.AppConfig;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -7,11 +8,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Filtro CORS para permitir que el frontend (cuando corre en un origen distinto,
- * p. ej. durante desarrollo) se comunique con la API.
- *
- * En producción, reemplaza allowedOrigins='*' por el dominio real del frontend
- * en web.xml: <init-param><param-name>allowedOrigins</param-name><param-value>https://tusitioweb.com</param-value>
+ * Filtro CORS configurable en tres niveles (orden de prioridad):
+ *   1. Propiedad JVM:    -Dcors.allowed.origins=https://tuapp.com
+ *   2. config.properties: cors.allowed.origins=https://tuapp.com
+ *   3. web.xml init-param: allowedOrigins (fallback para sobreescritura por despliegue)
+ *   4. Default: * (solo para desarrollo; no usar en producción)
  */
 public class CorsFilter implements Filter {
 
@@ -19,10 +20,14 @@ public class CorsFilter implements Filter {
 
     @Override
     public void init(FilterConfig fc) {
-        allowedOrigins = fc.getInitParameter("allowedOrigins");
-        if (allowedOrigins == null || allowedOrigins.isBlank()) {
-            allowedOrigins = "*";
-        }
+        String fromSystem = System.getProperty("cors.allowed.origins");
+        String fromConfig = AppConfig.get("cors.allowed.origins");
+        String fromParam  = fc.getInitParameter("allowedOrigins");
+
+        allowedOrigins = fromSystem != null ? fromSystem
+                       : fromConfig != null ? fromConfig
+                       : fromParam  != null ? fromParam
+                       : "*";
     }
 
     @Override
@@ -37,7 +42,6 @@ public class CorsFilter implements Filter {
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
         resp.setHeader("Access-Control-Max-Age",       "3600");
 
-        // Las peticiones OPTIONS (preflight) se responden inmediatamente
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
             resp.setStatus(HttpServletResponse.SC_OK);
             return;

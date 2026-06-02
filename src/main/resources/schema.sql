@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS equipment (
 
     -- Metadatos
     notes                   TEXT,
-    photos                  LONGTEXT        COMMENT 'JSON array de imágenes (base64 o URLs)',
     created_at              TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
