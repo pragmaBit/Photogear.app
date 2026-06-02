@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>photogear.app – Inventario Fotográfico</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="css/photogear.css">
+  <style>
+    /* ── Login page ── */
+    #page-login { min-height:100vh; display:flex; align-items:center;
+                  justify-content:center; background:var(--bg); }
+    .login-card { background:var(--card); border-radius:16px;
+                  padding:48px 40px; max-width:400px; width:90%;
+                  box-shadow:0 8px 32px rgba(0,0,0,.35); text-align:center; }
+    .login-logo { font-family:var(--font-d); font-size:22px;
+                  color:var(--accent); margin-bottom:24px; }
+    .login-title { font-family:var(--font-d); font-size:26px;
+                   color:var(--fg); margin:0 0 10px; }
+    .login-sub  { color:var(--muted); font-size:14px;
+                  line-height:1.6; margin:0 0 32px; }
+    #google-signin-btn { display:flex; justify-content:center; margin-bottom:16px; }
+    .login-error { color:var(--red); font-size:13px;
+                   margin-bottom:12px; padding:10px;
+                   background:rgba(224,82,82,.1); border-radius:8px; }
+    .login-hint { color:var(--muted); font-size:12px; margin-top:20px; line-height:1.5; }
+    .no-config-msg { color:var(--yellow); font-size:13px; padding:12px;
+                     background:rgba(212,168,67,.1); border-radius:8px;
+                     margin-bottom:12px; }
+    /* ── User info in navbar ── */
+    .user-info   { display:flex; align-items:center; gap:10px;
+                   margin-right:12px; }
+    .user-avatar { width:30px; height:30px; border-radius:50%;
+                   object-fit:cover; border:2px solid var(--accent); }
+    .user-name   { color:var(--fg); font-size:13px;
+                   font-family:var(--font-m); max-width:150px;
+                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     NAVBAR
+════════════════════════════════════════════════════════════ -->
+<nav class="w3-bar" id="navbar">
+  <div class="nav-logo" onclick="loadDashboard()">
+    <span>◉</span> photogear<span style="color:var(--muted)">.app</span>
+  </div>
+
+  <button class="nav-link active" data-page="dashboard" onclick="loadDashboard()">Dashboard</button>
+  <button class="nav-link"        data-page="inventory" onclick="loadInventory()">Inventario</button>
+
+  <div class="nav-spacer"></div>
+
+  <span id="api-status" class="api-pill offline" style="margin-right:8px">● Modo local</span>
+  <div id="user-info" class="user-info" style="display:none">
+    <img id="user-avatar" class="user-avatar" src="" alt="" style="display:none">
+    <span id="user-display-name" class="user-name"></span>
+    <button class="btn btn-outline btn-sm" onclick="signOut()">Salir</button>
+  </div>
+  <button class="btn btn-primary" onclick="openAddForm()">+ Agregar equipo</button>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE: LOGIN
+════════════════════════════════════════════════════════════ -->
+<div id="page-login" class="page">
+  <div class="login-card">
+    <div class="login-logo">◉ photogear<span style="color:var(--muted)">.app</span></div>
+    <h1 class="login-title">Bienvenido</h1>
+    <p class="login-sub">Inicia sesión para gestionar tu inventario fotográfico de forma segura.</p>
+    <div id="login-no-config" class="no-config-msg" style="display:none">
+      ⚠ Google Sign-In no está configurado en el servidor.<br>
+      Agrega tu <code>google.client.id</code> en <code>config.properties</code>.
+    </div>
+    <div id="google-signin-btn"></div>
+    <div id="login-error" class="login-error" style="display:none"></div>
+    <p class="login-hint">Sin servidor activo la app funciona en <strong>modo local</strong> automáticamente, sin necesidad de iniciar sesión.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE: DASHBOARD
+════════════════════════════════════════════════════════════ -->
+<div id="page-dashboard" class="page active">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mi Inventario Fotográfico</h1>
+      <p class="page-sub">Gestión de equipo · Edgar F. Flores M.</p>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="w3-card-4 stat-card">
+      <div class="stat-label">Total de equipos</div>
+      <div class="stat-value" id="stat-total" style="color:var(--accent)">—</div>
+      <div class="stat-sub">piezas registradas</div>
+    </div>
+    <div class="w3-card-4 stat-card">
+      <div class="stat-label">Valor total</div>
+      <div class="stat-value" id="stat-value" style="color:var(--green)">—</div>
+      <div class="stat-sub">a precio de compra</div>
+    </div>
+    <div class="w3-card-4 stat-card">
+      <div class="stat-label">Extraviados / Robados</div>
+      <div class="stat-value" id="stat-critical" style="color:var(--dim)">—</div>
+      <div class="stat-sub">requieren atención</div>
+    </div>
+    <div class="w3-card-4 stat-card">
+      <div class="stat-label">En reparación</div>
+      <div class="stat-value" id="stat-repair" style="color:var(--yellow)">—</div>
+      <div class="stat-sub">fuera de servicio</div>
+    </div>
+  </div>
+
+  <!-- Two-col section -->
+  <div class="two-col">
+    <!-- Category breakdown -->
+    <div class="w3-card-4 section-card">
+      <div class="section-title">Por categoría</div>
+      <div id="cat-list"></div>
+    </div>
+
+    <!-- Recent -->
+    <div class="w3-card-4 section-card">
+      <div class="section-title">Agregados recientemente</div>
+      <div id="recent-list"></div>
+    </div>
+  </div>
+
+  <!-- Incidents -->
+  <div class="incident-banner" id="incident-banner" style="display:none">
+    <div class="incident-title">⚠ Equipos reportados</div>
+    <div id="incident-list"></div>
+  </div>
+
+</div><!-- /page-dashboard -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE: INVENTARIO
+════════════════════════════════════════════════════════════ -->
+<div id="page-inventory" class="page">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Inventario</h1>
+      <p class="page-sub" id="inv-count">— equipos</p>
+    </div>
+    <button class="btn btn-primary" onclick="openAddForm()">+ Agregar equipo</button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" class="form-input"
+             placeholder="Buscar por marca, modelo o número de serie…"
+             style="padding-left:36px">
+    </div>
+  </div>
+
+  <!-- Category pills -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="cat-pills"></div>
+
+  <!-- Status pills -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px" id="status-pills"></div>
+
+  <!-- Grid -->
+  <div class="eq-grid" id="eq-grid"></div>
+
+</div><!-- /page-inventory -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE: DETALLE
+════════════════════════════════════════════════════════════ -->
+<div id="page-detail" class="page">
+  <div id="detail-content"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE: FORMULARIO
+════════════════════════════════════════════════════════════ -->
+<div id="page-form" class="page">
+
+  <div class="page-header" style="margin-bottom:24px">
+    <div>
+      <h1 class="page-title" id="form-title">Agregar equipo</h1>
+    </div>
+    <button class="btn btn-outline" onclick="history.go(-1); loadInventory()">✕ Cancelar</button>
+  </div>
+
+  <div class="w3-card-4 section-card">
+
+    <!-- Sección: Identificación -->
+    <div class="form-section">
+      <div class="form-section-title">Identificación</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categoría *</label>
+          <select id="f-category" class="form-select">
+            <option value="camera">📷 Cámara</option>
+            <option value="lens">🔭 Objetivo / Lente</option>
+            <option value="tripod">📐 Trípie</option>
+            <option value="lighting">💡 Iluminación</option>
+            <option value="bag">🎒 Bolsa / Mochila</option>
+            <option value="accessory">⚙️ Accesorio</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número de serie</label>
+          <input id="f-serial" type="text" class="form-input" placeholder="Ej. CR5-082341">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Marca *</label>
+          <input id="f-brand" type="text" class="form-input" placeholder="Canon, Nikon, Manfrotto…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modelo *</label>
+          <input id="f-model" type="text" class="form-input" placeholder="EOS R5, RF 50mm f/1.2…">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Compra -->
+    <div class="form-section">
+      <div class="form-section-title">Compra</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fecha de compra</label>
+          <input id="f-purchase-date" type="date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Precio de compra (MXN)</label>
+          <input id="f-purchase-price" type="number" class="form-input" placeholder="65000" min="0" step="100">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Estado -->
+    <div class="form-section">
+      <div class="form-section-title">Estado y condición</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Condición física</label>
+          <select id="f-condition" class="form-select">
+            <option value="excellent">Excelente</option>
+            <option value="good">Buena</option>
+            <option value="fair">Regular</option>
+            <option value="poor">Deficiente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select id="f-status" class="form-select">
+            <option value="active">Activo</option>
+            <option value="repair">En reparación</option>
+            <option value="sold">Vendido</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Garantía -->
+    <div class="form-section">
+      <div class="form-section-title">Garantía</div>
+      <label class="toggle-label">
+        <input type="checkbox" id="f-warranty-has" onchange="toggleWarrantyFields()">
+        Tiene garantía
+      </label>
+      <div class="form-row" id="warranty-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Proveedor / Marca</label>
+          <input id="f-warranty-provider" type="text" class="form-input" placeholder="Canon México">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de vencimiento</label>
+          <input id="f-warranty-expiry" type="date" class="form-input">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Seguro -->
+    <div class="form-section">
+      <div class="form-section-title">Seguro</div>
+      <label class="toggle-label">
+        <input type="checkbox" id="f-insurance-has" onchange="toggleInsuranceFields()">
+        Tiene seguro
+      </label>
+      <div id="insurance-fields" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Aseguradora</label>
+            <input id="f-insurance-provider" type="text" class="form-input" placeholder="GNP Seguros">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Número de póliza</label>
+            <input id="f-insurance-policy" type="text" class="form-input" placeholder="GNP-2021-4892">
+          </div>
+        </div>
+        <div class="form-row cols-1">
+          <div class="form-group">
+            <label class="form-label">Vigencia hasta</label>
+            <input id="f-insurance-expiry" type="date" class="form-input">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Fotos -->
+    <div class="form-section">
+      <div class="form-section-title">Fotografías del equipo</div>
+      <div class="photo-upload-area" onclick="document.getElementById('photo-input').click()">
+        <span style="font-size:28px">📷</span>
+        <p>Haz clic para seleccionar imágenes (máx. 5)</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px">JPG, PNG · Las imágenes se redimensionan automáticamente</p>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" multiple
+             style="display:none" onchange="handlePhotoInput(this)">
+      <div class="photo-preview" id="photo-preview"></div>
+    </div>
+
+    <!-- Sección: Notas -->
+    <div class="form-section">
+      <div class="form-section-title">Notas</div>
+      <div class="form-row cols-1">
+        <div class="form-group">
+          <label class="form-label">Notas adicionales</label>
+          <textarea id="f-notes" class="form-textarea"
+                    placeholder="Accesorios incluidos, detalles, observaciones…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="loadInventory()">Cancelar</button>
+      <button class="btn btn-primary btn-lg" id="btn-save" onclick="saveForm()">
+        💾 Guardar equipo
+      </button>
+    </div>
+
+  </div><!-- /section-card -->
+</div><!-- /page-form -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL: REPORTAR PERDIDO / ROBADO
+════════════════════════════════════════════════════════════ -->
+<div id="modal-report" class="w3-modal" style="display:none;align-items:center;justify-content:center">
+  <div class="w3-modal-content w3-card-4"
+       style="max-width:480px;width:90%;border-radius:12px;padding:28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-family:var(--font-d);color:var(--red);margin:0;font-size:18px">
+        ⚠ Reportar incidente
+      </h3>
+      <button class="btn btn-outline btn-sm" onclick="closeReportModal()">✕</button>
+    </div>
+
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Tipo de incidente</label>
+      <select id="r-status" class="form-select">
+        <option value="lost">Perdido</option>
+        <option value="stolen">Robado</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Fecha del incidente</label>
+      <input id="r-date" type="date" class="form-input">
+    </div>
+
+    <div class="form-group" style="margin-bottom:24px">
+      <label class="form-label">Detalles del incidente</label>
+      <textarea id="r-details" class="form-textarea"
+                placeholder="Dónde ocurrió, folio de denuncia ante el MP, circunstancias…"
+                style="min-height:100px"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeReportModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="submitReport()">Registrar reporte</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     LIGHTBOX
+════════════════════════════════════════════════════════════ -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="document.getElementById('lightbox').classList.remove('open')">✕</button>
+  <img id="lightbox-img" src="" alt="Foto ampliada">
+</div>
+
+
+<!-- Scripts -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+</body>
+</html>

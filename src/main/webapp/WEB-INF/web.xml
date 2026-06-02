@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+             https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+
+    <display-name>photogear.app</display-name>
+
+    <!-- ======================================================
+         NOTA: Si usas Tomcat 9 (javax.servlet.*), cambia la
+         declaración del namespace a:
+         xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         version="4.0"
+         y ajusta los imports Java correspondientes.
+    ====================================================== -->
+
+    <!-- Filtro CORS (necesario para desarrollo con frontend separado) -->
+    <filter>
+        <filter-name>CorsFilter</filter-name>
+        <filter-class>app.photogear.filter.CorsFilter</filter-class>
+        <init-param>
+            <param-name>allowedOrigins</param-name>
+            <!-- En producción: reemplaza * por el dominio real del frontend -->
+            <param-value>*</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>CorsFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+    </filter-mapping>
+
+    <!-- Filtro de autenticación JWT (protege los endpoints de equipo) -->
+    <filter>
+        <filter-name>AuthFilter</filter-name>
+        <filter-class>app.photogear.filter.AuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/api/equipment</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>AuthFilter</filter-name>
+        <url-pattern>/api/equipment/*</url-pattern>
+    </filter-mapping>
+
+    <!-- Servlet de autenticación (Google OAuth) -->
+    <servlet>
+        <servlet-name>AuthServlet</servlet-name>
+        <servlet-class>app.photogear.servlet.AuthServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>AuthServlet</servlet-name>
+        <url-pattern>/api/auth/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- Servlet principal de equipo fotográfico -->
+    <servlet>
+        <servlet-name>EquipmentServlet</servlet-name>
+        <servlet-class>app.photogear.servlet.EquipmentServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>EquipmentServlet</servlet-name>
+        <url-pattern>/api/equipment</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>EquipmentServlet</servlet-name>
+        <url-pattern>/api/equipment/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- Archivos de bienvenida (frontend estático) -->
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+    <session-config>
+        <session-timeout>30</session-timeout>
+    </session-config>
+</web-app>
