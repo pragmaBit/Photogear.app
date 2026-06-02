@@ -1,1 +1,15 @@
+# Credenciales OAuth de Google
 client_secret_39075868135-pm7u75m23jq2pstudgeanolnbm23fieo.apps.googleusercontent.com.json
+
+# Artefactos de compilación Maven
+target/
+
+# Base de datos H2 local
+*.mv.db
+*.trace.db
+
+# Archivos de IDE / SO
+.idea/
+*.iml
+.vscode/
+.DS_Store

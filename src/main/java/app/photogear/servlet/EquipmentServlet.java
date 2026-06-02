@@ -1,8 +1,8 @@
 package app.photogear.servlet;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import app.photogear.dao.EquipmentDAO;
 import app.photogear.model.Equipment;
@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,7 +87,13 @@ public class EquipmentServlet extends HttpServlet {
 
         if (segments.length == 0) {
             // POST /api/equipment → crear nuevo equipo
-            Equipment e = GsonConfig.get().fromJson(body, Equipment.class);
+            Equipment e;
+            try {
+                e = GsonConfig.get().fromJson(body, Equipment.class);
+            } catch (JsonParseException ex) {
+                writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
+                return;
+            }
             if (e == null || isBlank(e.getBrand()) || isBlank(e.getModel())) {
                 writeJson(resp, 400, error("Los campos 'brand' y 'model' son obligatorios"));
                 return;
@@ -123,8 +130,12 @@ public class EquipmentServlet extends HttpServlet {
                     writeJson(resp, 404, error("Equipo no encontrado: " + id));
                 }
 
-            } catch (Exception ex) {
+            } catch (SQLException ex) {
                 serverError(resp, "Error al registrar el reporte", ex);
+            } catch (DateTimeParseException ex) {
+                writeJson(resp, 400, error("Fecha inválida. Usa el formato AAAA-MM-DD"));
+            } catch (JsonParseException | IllegalStateException ex) {
+                writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
             }
 
         } else {
@@ -145,7 +156,13 @@ public class EquipmentServlet extends HttpServlet {
 
         String id   = segments[0];
         String body = readBody(req);
-        Equipment e = GsonConfig.get().fromJson(body, Equipment.class);
+        Equipment e;
+        try {
+            e = GsonConfig.get().fromJson(body, Equipment.class);
+        } catch (JsonParseException ex) {
+            writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
+            return;
+        }
 
         if (e == null || isBlank(e.getBrand()) || isBlank(e.getModel())) {
             writeJson(resp, 400, error("Los campos 'brand' y 'model' son obligatorios"));

@@ -133,20 +133,26 @@ Base URL: `http://localhost:8080/photogear/api`
 photogear/
 ├── pom.xml
 └── src/main/
-    ├── java/mx/edgarflores/photogear/
+    ├── java/app/photogear/
     │   ├── dao/
     │   │   ├── DatabaseManager.java    ← Conexión H2/MariaDB
-    │   │   └── EquipmentDAO.java       ← CRUD con PreparedStatements
+    │   │   ├── EquipmentDAO.java       ← CRUD con PreparedStatements
+    │   │   └── UserDAO.java            ← Persistencia de usuarios
     │   ├── filter/
-    │   │   └── CorsFilter.java         ← CORS para desarrollo
+    │   │   ├── CorsFilter.java         ← CORS para desarrollo
+    │   │   └── AuthFilter.java         ← Validación de JWT
     │   ├── listener/
     │   │   └── AppContextListener.java ← Inicializa BD al arrancar
     │   ├── model/
-    │   │   └── Equipment.java          ← Modelo de datos
+    │   │   ├── Equipment.java          ← Modelo de datos
+    │   │   └── User.java               ← Usuario autenticado
     │   ├── servlet/
-    │   │   └── EquipmentServlet.java   ← API REST
+    │   │   ├── EquipmentServlet.java   ← API REST de equipo
+    │   │   └── AuthServlet.java        ← Login con Google + JWT
     │   └── util/
-    │       └── GsonConfig.java         ← Gson con adaptadores java.time
+    │       ├── GsonConfig.java         ← Gson con adaptadores java.time
+    │       ├── AppConfig.java          ← Lectura de config.properties
+    │       └── JwtUtil.java            ← Emisión/validación de JWT
     ├── resources/
     │   ├── config.properties           ← Configuración de BD
     │   └── schema.sql                  ← DDL (ejecutado al arrancar)
