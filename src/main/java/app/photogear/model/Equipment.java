@@ -39,7 +39,6 @@ public class Equipment {
 
     // Metadatos
     private String        notes;
-    private String        photos;      // JSON array: ["data:image/jpeg;base64,...", ...]
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -103,9 +102,6 @@ public class Equipment {
 
     public String getNotes()                       { return notes; }
     public void setNotes(String notes)             { this.notes = notes; }
-
-    public String getPhotos()                      { return photos; }
-    public void setPhotos(String photos)           { this.photos = photos; }
 
     public LocalDateTime getCreatedAt()            { return createdAt; }
     public void setCreatedAt(LocalDateTime dt)     { this.createdAt = dt; }

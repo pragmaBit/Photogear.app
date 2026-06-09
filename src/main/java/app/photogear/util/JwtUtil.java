@@ -18,7 +18,11 @@ public class JwtUtil {
         String secret = AppConfig.get("jwt.secret", "");
         if (secret.length() < 32) {
             throw new ExceptionInInitializerError(
-                "jwt.secret debe tener al menos 32 caracteres. Configúralo en config.properties.");
+                "jwt.secret debe tener al menos 32 caracteres. Configúralo por variable de entorno JWT_SECRET o en config.properties.");
+        }
+        if (secret.startsWith("CAMBIA")) {
+            throw new ExceptionInInitializerError(
+                "jwt.secret tiene el valor de ejemplo. Define un secreto real (JWT_SECRET) antes de desplegar.");
         }
         KEY       = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         int hours = Integer.parseInt(AppConfig.get("jwt.expiry.hours", "24"));

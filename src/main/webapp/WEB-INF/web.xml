@@ -15,6 +15,16 @@
          y ajusta los imports Java correspondientes.
     ====================================================== -->
 
+    <!-- Cabeceras de seguridad (CSP, HSTS, anti-clickjacking…) en TODA respuesta -->
+    <filter>
+        <filter-name>SecurityHeadersFilter</filter-name>
+        <filter-class>app.photogear.filter.SecurityHeadersFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>SecurityHeadersFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
     <!-- Filtro CORS (necesario para desarrollo con frontend separado) -->
     <filter>
         <filter-name>CorsFilter</filter-name>
@@ -76,5 +86,31 @@
 
     <session-config>
         <session-timeout>30</session-timeout>
+        <!-- Cookie de sesión endurecida (aunque la auth use JWT, no sesión) -->
+        <cookie-config>
+            <http-only>true</http-only>
+            <secure>true</secure>
+            <same-site>Strict</same-site>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
     </session-config>
+
+    <!-- Páginas de error genéricas: evitan que Tomcat exponga stack traces
+         y la versión del servidor (information disclosure) -->
+    <error-page>
+        <error-code>404</error-code>
+        <location>/error.html</location>
+    </error-page>
+    <error-page>
+        <error-code>403</error-code>
+        <location>/error.html</location>
+    </error-page>
+    <error-page>
+        <error-code>500</error-code>
+        <location>/error.html</location>
+    </error-page>
+    <error-page>
+        <exception-type>java.lang.Throwable</exception-type>
+        <location>/error.html</location>
+    </error-page>
 </web-app>

@@ -1,8 +1,8 @@
 package app.photogear.servlet;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import app.photogear.dao.EquipmentDAO;
 import app.photogear.model.Equipment;
@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +36,52 @@ public class EquipmentServlet extends HttpServlet {
 
     private static final Logger LOG = Logger.getLogger(EquipmentServlet.class.getName());
     private final EquipmentDAO dao = new EquipmentDAO();
+
+    // ── Listas blancas de valores permitidos ──────────────────
+    private static final Set<String> CATEGORIES =
+        Set.of("camera", "lens", "tripod", "lighting", "bag", "accessory");
+    private static final Set<String> CONDITIONS =
+        Set.of("excellent", "good", "fair", "poor");
+    private static final Set<String> STATUSES =
+        Set.of("active", "repair", "lost", "stolen", "sold");
+
+    private static final int MAX_SHORT = 200;   // marca, modelo, proveedores…
+    private static final int MAX_LONG  = 5000;  // notas, detalles
+
+    /**
+     * Valida el payload contra listas blancas y límites de longitud.
+     * @return mensaje de error, o null si es válido.
+     */
+    private String validate(Equipment e) {
+        if (isBlank(e.getBrand()) || isBlank(e.getModel())) {
+            return "Los campos 'brand' y 'model' son obligatorios";
+        }
+        if (e.getCategory() != null && !CATEGORIES.contains(e.getCategory())) {
+            return "Categoría no válida";
+        }
+        if (e.getCondition() != null && !CONDITIONS.contains(e.getCondition())) {
+            return "Condición no válida";
+        }
+        if (e.getStatus() != null && !STATUSES.contains(e.getStatus())) {
+            return "Estado no válido";
+        }
+        if (tooLong(e.getBrand(), MAX_SHORT) || tooLong(e.getModel(), MAX_SHORT)
+                || tooLong(e.getSerialNumber(), MAX_SHORT)
+                || tooLong(e.getWarrantyProvider(), MAX_SHORT)
+                || tooLong(e.getInsuranceProvider(), MAX_SHORT)
+                || tooLong(e.getInsurancePolicyNumber(), MAX_SHORT)) {
+            return "Uno o más campos exceden la longitud máxima permitida";
+        }
+        if (tooLong(e.getNotes(), MAX_LONG) || tooLong(e.getReportDetails(), MAX_LONG)) {
+            return "El texto excede la longitud máxima permitida";
+        }
+        return null;
+    }
+
+    private boolean tooLong(String s, int max) {
+        return s != null && s.length() > max;
+    }
+
 
     // ── GET ───────────────────────────────────────────────────
 
@@ -86,9 +133,20 @@ public class EquipmentServlet extends HttpServlet {
 
         if (segments.length == 0) {
             // POST /api/equipment → crear nuevo equipo
-            Equipment e = GsonConfig.get().fromJson(body, Equipment.class);
-            if (e == null || isBlank(e.getBrand()) || isBlank(e.getModel())) {
-                writeJson(resp, 400, error("Los campos 'brand' y 'model' son obligatorios"));
+            Equipment e;
+            try {
+                e = GsonConfig.get().fromJson(body, Equipment.class);
+            } catch (JsonParseException ex) {
+                writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
+                return;
+            }
+            if (e == null) {
+                writeJson(resp, 400, error("Cuerpo de la petición vacío"));
+                return;
+            }
+            String invalid = validate(e);
+            if (invalid != null) {
+                writeJson(resp, 400, error(invalid));
                 return;
             }
             try {
@@ -123,8 +181,12 @@ public class EquipmentServlet extends HttpServlet {
                     writeJson(resp, 404, error("Equipo no encontrado: " + id));
                 }
 
-            } catch (Exception ex) {
+            } catch (SQLException ex) {
                 serverError(resp, "Error al registrar el reporte", ex);
+            } catch (DateTimeParseException ex) {
+                writeJson(resp, 400, error("Fecha inválida. Usa el formato AAAA-MM-DD"));
+            } catch (JsonParseException | IllegalStateException ex) {
+                writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
             }
 
         } else {
@@ -145,10 +207,21 @@ public class EquipmentServlet extends HttpServlet {
 
         String id   = segments[0];
         String body = readBody(req);
-        Equipment e = GsonConfig.get().fromJson(body, Equipment.class);
+        Equipment e;
+        try {
+            e = GsonConfig.get().fromJson(body, Equipment.class);
+        } catch (JsonParseException ex) {
+            writeJson(resp, 400, error("Cuerpo de la petición JSON inválido"));
+            return;
+        }
 
-        if (e == null || isBlank(e.getBrand()) || isBlank(e.getModel())) {
-            writeJson(resp, 400, error("Los campos 'brand' y 'model' son obligatorios"));
+        if (e == null) {
+            writeJson(resp, 400, error("Cuerpo de la petición vacío"));
+            return;
+        }
+        String invalid = validate(e);
+        if (invalid != null) {
+            writeJson(resp, 400, error(invalid));
             return;
         }
 
@@ -239,8 +312,10 @@ public class EquipmentServlet extends HttpServlet {
     }
 
     private void serverError(HttpServletResponse resp, String msg, Exception e) throws IOException {
+        // Se registra el detalle internamente, pero NUNCA se expone al cliente
+        // (evita fuga de información: SQL, rutas, versiones, etc.)
         LOG.log(Level.SEVERE, msg, e);
-        writeJson(resp, 500, error(msg + ": " + e.getMessage()));
+        writeJson(resp, 500, error("Error interno del servidor"));
     }
 
     private boolean isBlank(String s) {

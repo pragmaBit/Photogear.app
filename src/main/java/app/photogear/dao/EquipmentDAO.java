@@ -34,8 +34,8 @@ public class EquipmentDAO {
             " purchase_date, purchase_price, equipment_condition, status, " +
             " warranty_has, warranty_expiry, warranty_provider, " +
             " insurance_has, insurance_provider, insurance_policy_number, insurance_expiry, " +
-            " report_date, report_details, notes, photos, created_at, updated_at) " +
-            "VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?,?,?,?)";
+            " report_date, report_details, notes, created_at, updated_at) " +
+            "VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?, ?,?,?,?, ?,?,?,?,?)";
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -59,9 +59,8 @@ public class EquipmentDAO {
             ps.setObject(17, e.getReportDate());
             ps.setString(18, e.getReportDetails());
             ps.setString(19, e.getNotes());
-            ps.setString(20, e.getPhotos());
-            ps.setObject(21, e.getCreatedAt());
-            ps.setObject(22, e.getUpdatedAt());
+            ps.setObject(20, e.getCreatedAt());
+            ps.setObject(21, e.getUpdatedAt());
 
             ps.executeUpdate();
         }
@@ -141,7 +140,7 @@ public class EquipmentDAO {
             "  purchase_date = ?, purchase_price = ?, equipment_condition = ?, status = ?, " +
             "  warranty_has = ?, warranty_expiry = ?, warranty_provider = ?, " +
             "  insurance_has = ?, insurance_provider = ?, insurance_policy_number = ?, insurance_expiry = ?, " +
-            "  report_date = ?, report_details = ?, notes = ?, photos = ?, updated_at = ? " +
+            "  report_date = ?, report_details = ?, notes = ?, updated_at = ? " +
             "WHERE id = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
@@ -165,9 +164,8 @@ public class EquipmentDAO {
             ps.setObject(16, e.getReportDate());
             ps.setString(17, e.getReportDetails());
             ps.setString(18, e.getNotes());
-            ps.setString(19, e.getPhotos());
-            ps.setObject(20, e.getUpdatedAt());
-            ps.setString(21, e.getId());
+            ps.setObject(19, e.getUpdatedAt());
+            ps.setString(20, e.getId());
 
             return ps.executeUpdate() > 0;
         }
@@ -276,7 +274,6 @@ public class EquipmentDAO {
         e.setReportDetails(rs.getString("report_details"));
 
         e.setNotes(rs.getString("notes"));
-        e.setPhotos(rs.getString("photos"));
 
         Timestamp ca = rs.getTimestamp("created_at");
         if (ca != null) e.setCreatedAt(ca.toLocalDateTime());

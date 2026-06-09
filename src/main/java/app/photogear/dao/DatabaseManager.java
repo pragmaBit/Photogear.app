@@ -1,9 +1,11 @@
 package app.photogear.dao;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
@@ -11,17 +13,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Gestiona la conexión JDBC con soporte para dos perfiles:
- *  - h2       → desarrollo / pruebas  (base de datos embebida, sin instalación)
+ * Gestiona el pool de conexiones HikariCP con soporte para dos perfiles:
+ *  - h2       → desarrollo / pruebas  (base de datos embebida)
  *  - mariadb  → producción
  *
  * Selección de perfil (en orden de prioridad):
  *  1. Propiedad JVM:  -Ddb.profile=mariadb
  *  2. config.properties → db.profile
  *  3. Default: h2
- *
- * Para cambiar en Tomcat, agrega a $CATALINA_HOME/bin/setenv.sh:
- *     JAVA_OPTS="$JAVA_OPTS -Ddb.profile=mariadb"
  */
 public class DatabaseManager {
 
@@ -30,9 +29,7 @@ public class DatabaseManager {
     private static final String CONFIG_RESOURCE = "/config.properties";
     private static final String SCHEMA_RESOURCE = "/schema.sql";
 
-    private static String url;
-    private static String username;
-    private static String password;
+    private static HikariDataSource dataSource;
     private static String activeProfile;
 
     static {
@@ -43,22 +40,38 @@ public class DatabaseManager {
             Properties props = new Properties();
             props.load(is);
 
-            // Propiedad JVM tiene prioridad sobre config.properties
             activeProfile = System.getProperty("db.profile",
                             props.getProperty("db.profile", "h2")).trim();
 
-            String driver = props.getProperty(activeProfile + ".driver");
-            url      = props.getProperty(activeProfile + ".url");
-            username = props.getProperty(activeProfile + ".username");
-            password = props.getProperty(activeProfile + ".password", "");
+            String driver   = props.getProperty(activeProfile + ".driver");
+            String url      = props.getProperty(activeProfile + ".url");
+            String username = props.getProperty(activeProfile + ".username");
+            String password = props.getProperty(activeProfile + ".password", "");
 
             if (driver == null || url == null) {
                 throw new IllegalStateException(
                     "Configuración incompleta para el perfil: " + activeProfile);
             }
 
-            Class.forName(driver);
-            LOG.info("DatabaseManager inicializado. Perfil: " + activeProfile + " | URL: " + url);
+            HikariConfig config = new HikariConfig();
+            config.setDriverClassName(driver);
+            config.setJdbcUrl(url);
+            config.setUsername(username);
+            config.setPassword(password);
+            config.setMinimumIdle(Integer.parseInt(
+                props.getProperty("hikari.minimum-idle", "2")));
+            config.setMaximumPoolSize(Integer.parseInt(
+                props.getProperty("hikari.maximum-pool-size", "10")));
+            config.setConnectionTimeout(Long.parseLong(
+                props.getProperty("hikari.connection-timeout", "30000")));
+            config.setIdleTimeout(Long.parseLong(
+                props.getProperty("hikari.idle-timeout", "600000")));
+            config.setMaxLifetime(Long.parseLong(
+                props.getProperty("hikari.max-lifetime", "1800000")));
+            config.setPoolName("PhotogearPool");
+
+            dataSource = new HikariDataSource(config);
+            LOG.info("Pool HikariCP inicializado. Perfil: " + activeProfile + " | URL: " + url);
 
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "Error fatal inicializando DatabaseManager", e);
@@ -66,17 +79,13 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Retorna una nueva conexión JDBC.
-     * El llamador es responsable de cerrarla (usar try-with-resources).
-     */
+    /** Retorna una conexión del pool. El llamador debe cerrarla (try-with-resources). */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(url, username, password);
+        return dataSource.getConnection();
     }
 
     /**
-     * Inicializa el esquema de base de datos ejecutando schema.sql.
-     * Se llama desde AppContextListener al arrancar Tomcat.
+     * Inicializa el esquema ejecutando schema.sql.
      * Seguro de invocar múltiples veces gracias a IF NOT EXISTS.
      */
     public static void initSchema() {
@@ -92,7 +101,6 @@ public class DatabaseManager {
             try (Connection conn = getConnection();
                  Statement  stmt = conn.createStatement()) {
 
-                // Dividir en sentencias individuales (ignorar comentarios y líneas vacías)
                 for (String raw : fullSql.split(";")) {
                     String sql = raw.replaceAll("--[^\n]*", "").trim();
                     if (!sql.isEmpty()) {
@@ -108,13 +116,15 @@ public class DatabaseManager {
         }
     }
 
-    /** Retorna el nombre del perfil activo ('h2' o 'mariadb'). */
-    public static String getActiveProfile() {
-        return activeProfile;
+    /** Cierra el pool al detener la aplicación. */
+    public static void close() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+            LOG.info("Pool de conexiones cerrado.");
+        }
     }
 
-    /** Indica si se está usando H2 (útil para adaptaciones de SQL). */
-    public static boolean isH2() {
-        return "h2".equalsIgnoreCase(activeProfile);
-    }
+    public static String getActiveProfile() { return activeProfile; }
+
+    public static boolean isH2() { return "h2".equalsIgnoreCase(activeProfile); }
 }

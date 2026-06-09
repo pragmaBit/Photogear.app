@@ -138,7 +138,13 @@ async function apiFetch(method, path, body) {
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
   if (body)  opts.body = JSON.stringify(body);
 
-  const r = await fetch(API_BASE + path, opts);
+  let r;
+  try {
+    r = await fetch(API_BASE + path, opts);
+  } catch (e) {
+    console.error('Error de red', e);
+    return { success: false, message: 'No se pudo conectar con el servidor.' };
+  }
 
   if (r.status === 401) {
     Auth.clear();
@@ -146,7 +152,11 @@ async function apiFetch(method, path, body) {
     return { success: false, message: 'Sesión expirada. Inicia sesión nuevamente.' };
   }
 
-  return r.json();
+  try {
+    return await r.json();
+  } catch {
+    return { success: false, message: `Respuesta inesperada del servidor (HTTP ${r.status}).` };
+  }
 }
 
 /* ── Servicio unificado ──────────────────────────────────────── */
@@ -154,7 +164,8 @@ const ApiService = {
 
   async getAll(params = {}) {
     if (!apiOnline) {
-      return { success: true, data: LocalDB.findAll(params), total: 0 };
+      const data = LocalDB.findAll(params);
+      return { success: true, data, total: data.length };
     }
     const qs = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([,v]) => v && v !== 'all'))
