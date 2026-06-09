@@ -15,10 +15,10 @@ const CATEGORIES = [
 const CAT = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
 
 const CONDITIONS = {
-  excellent: { label: 'Excelente', color: '#52b788' },
-  good:      { label: 'Bueno',     color: '#95d5b2' },
-  fair:      { label: 'Regular',   color: '#d4a843' },
-  poor:      { label: 'Deficiente',color: '#e05252' },
+  excellent: { label: 'Excelente' },
+  good:      { label: 'Bueno'     },
+  fair:      { label: 'Regular'   },
+  poor:      { label: 'Deficiente'},
 };
 
 const STATUSES = {
@@ -55,7 +55,7 @@ function badge(status) {
 
 function condDot(condition) {
   const c = CONDITIONS[condition] || CONDITIONS.good;
-  return `<span class="cond-dot"><span class="dot" style="background:${c.color}"></span>${c.label}</span>`;
+  return `<span class="cond-dot"><span class="dot dot-${condition || 'good'}"></span>${c.label}</span>`;
 }
 
 function catIcon(cat) {
@@ -80,7 +80,6 @@ const SAMPLE = [
 
 let googleReady = false;
 
-// Llamado automáticamente por el script de Google cuando carga
 window.onGoogleLibraryLoad = async function() {
   googleReady = true;
   if (state.view === 'login') await initGoogleButton();
@@ -182,13 +181,14 @@ async function loadDashboard() {
   const critical = items.filter(i => i.status === 'stolen' || i.status === 'lost').length;
   const repair  = items.filter(i => i.status === 'repair').length;
 
-  // Stat cards
   document.getElementById('stat-total').textContent   = total;
   document.getElementById('stat-value').textContent   = fmx(value);
-  document.getElementById('stat-critical').textContent = critical;
   document.getElementById('stat-repair').textContent  = repair;
-  document.getElementById('stat-critical').style.color =
-    critical > 0 ? 'var(--red)' : 'var(--dim)';
+
+  const critEl = document.getElementById('stat-critical');
+  critEl.textContent = critical;
+  critEl.classList.toggle('stat-red', critical > 0);
+  critEl.classList.toggle('stat-dim', critical === 0);
 
   // Categories
   const catList = document.getElementById('cat-list');
@@ -199,21 +199,24 @@ async function loadDashboard() {
       if (!count) return '';
       const pct = total ? Math.round((count / total) * 100) : 0;
       return `
-        <div class="cat-row" onclick="filterAndShow('${c.id}')">
+        <div class="cat-row" data-cat="${c.id}">
           <div class="cat-info">
             <span class="cat-name">${c.icon} ${c.label}</span>
             <span class="cat-meta">${count} · ${fmx(val)}</span>
           </div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-track"><div class="bar-fill" data-pct="${pct}"></div></div>
         </div>`;
     }).join('');
+  catList.querySelectorAll('.bar-fill').forEach(el => {
+    el.style.width = el.dataset.pct + '%';
+  });
 
   // Recent items
   const recent = [...items].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
   document.getElementById('recent-list').innerHTML = recent.map(item => `
-    <div class="recent-row" onclick="openDetail('${item.id}')">
+    <div class="recent-row" data-id="${item.id}">
       <div class="thumb">${thumbHtml(item)}</div>
-      <div style="flex:1;min-width:0">
+      <div class="recent-body">
         <div class="recent-name">${esc(item.brand)} ${esc(item.model)}</div>
         <div class="recent-serial">${esc(item.serialNumber || '—')}</div>
       </div>
@@ -226,10 +229,10 @@ async function loadDashboard() {
   if (incidents.length) {
     banner.style.display = 'block';
     document.getElementById('incident-list').innerHTML = incidents.map(item => `
-      <div class="recent-row" onclick="openDetail('${item.id}')" style="border-bottom:1px solid rgba(224,82,82,.15)">
+      <div class="recent-row incident-item-row" data-id="${item.id}">
         ${badge(item.status)}
-        <span style="font-size:13px;margin-left:4px">${esc(item.brand)} ${esc(item.model)}</span>
-        <span style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-left:8px">S/N: ${esc(item.serialNumber||'—')}</span>
+        <span class="incident-item-name">${esc(item.brand)} ${esc(item.model)}</span>
+        <span class="incident-item-serial">S/N: ${esc(item.serialNumber||'—')}</span>
       </div>`).join('');
   } else {
     banner.style.display = 'none';
@@ -252,22 +255,20 @@ async function loadInventory() {
 }
 
 function renderFilterBar() {
-  // Category pills
   const catPills = document.getElementById('cat-pills');
   catPills.innerHTML = [{ id:'all', label:'Todo', icon:'◎' }, ...CATEGORIES]
     .map(c => `
       <button class="filter-pill ${state.filter.category === c.id ? 'active' : ''}"
-              onclick="setCatFilter('${c.id}')">
+              data-cat="${c.id}">
         ${c.icon || ''} ${c.label}
       </button>`).join('');
 
-  // Status pills
   const stPills = document.getElementById('status-pills');
   const allStatuses = [{ id:'all', label:'Todos' }, ...Object.entries(STATUSES).map(([id,v]) => ({id, label:v.label}))];
   stPills.innerHTML = allStatuses
     .map(s => `
       <button class="filter-pill ${state.filter.status === s.id ? 'active' : ''}"
-              onclick="setStatFilter('${s.id}')">
+              data-status="${s.id}">
         ${s.label}
       </button>`).join('');
 }
@@ -282,7 +283,7 @@ async function refreshInventory() {
 
   if (!items.length) {
     grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-state span-full">
         <div class="empty-icon">📷</div>
         <div class="empty-text">Sin resultados</div>
         <div class="empty-sub">Prueba con otros filtros o agrega equipo nuevo</div>
@@ -291,9 +292,9 @@ async function refreshInventory() {
   }
 
   grid.innerHTML = items.map(item => `
-    <div class="w3-card-4 eq-card" onclick="openDetail('${item.id}')">
+    <div class="w3-card-4 eq-card" data-id="${item.id}">
       <div class="eq-card-top">
-        <div class="thumb" style="width:42px;height:42px;font-size:22px">${thumbHtml(item)}</div>
+        <div class="thumb thumb-lg">${thumbHtml(item)}</div>
         ${badge(item.status)}
       </div>
       <div class="eq-brand">${esc(item.brand)}</div>
@@ -301,7 +302,7 @@ async function refreshInventory() {
       <div class="eq-serial">S/N: ${esc(item.serialNumber || '—')}</div>
       <div class="eq-footer">
         ${condDot(item.condition)}
-        <span style="font-family:var(--font-m);font-size:12px;color:var(--muted)">${fmx(item.purchasePrice)}</span>
+        <span class="eq-price">${fmx(item.purchasePrice)}</span>
       </div>
     </div>`).join('');
 }
@@ -335,28 +336,26 @@ async function openDetail(id) {
   const cat = CAT[item.category] || { label: item.category, icon: '📷' };
 
   document.getElementById('detail-content').innerHTML = `
-    <!-- Back + header -->
     <div class="detail-header">
-      <div class="detail-back" onclick="loadInventory()">← Volver al inventario</div>
-      <div style="display:flex;align-items:flex-start;gap:16px">
-        <div style="font-size:36px;line-height:1">${cat.icon}</div>
-        <div style="flex:1">
+      <div class="detail-back" data-action="back">← Volver al inventario</div>
+      <div class="detail-header-body">
+        <div class="detail-cat-icon">${cat.icon}</div>
+        <div class="detail-body-text">
           <div class="detail-brand">${esc(item.brand)} · ${cat.label}</div>
           <div class="detail-title">${esc(item.model)}</div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <div class="detail-badges">
             ${badge(item.status)} ${condDot(item.condition)}
           </div>
         </div>
       </div>
       <div class="detail-actions">
-        <button class="btn btn-outline" onclick="openEditForm('${id}')">✏️ Editar</button>
+        <button class="btn btn-outline" data-action="edit" data-id="${id}">✏️ Editar</button>
         ${item.status !== 'lost' && item.status !== 'stolen' ? `
-          <button class="btn btn-danger btn-sm" onclick="showReportModal()">⚠ Reportar perdido/robado</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="confirmDelete('${id}')">🗑 Eliminar</button>
+          <button class="btn btn-danger btn-sm" data-action="report">⚠ Reportar perdido/robado</button>` : ''}
+        <button class="btn btn-danger btn-sm" data-action="delete" data-id="${id}">🗑 Eliminar</button>
       </div>
     </div>
 
-    <!-- Incident banner -->
     ${(item.status === 'lost' || item.status === 'stolen') ? `
       <div class="incident-banner">
         <div class="incident-title">⚠ ${item.status === 'stolen' ? 'Equipo robado' : 'Equipo perdido'}</div>
@@ -366,7 +365,6 @@ async function openDetail(id) {
         </div>
       </div>` : ''}
 
-    <!-- Información general -->
     <div class="w3-card-4 section-card">
       <div class="section-title">📋 Información general</div>
       <div class="info-grid">
@@ -379,26 +377,23 @@ async function openDetail(id) {
       </div>
     </div>
 
-    <!-- Compra -->
     <div class="w3-card-4 section-card">
       <div class="section-title">💳 Compra</div>
       <div class="info-grid">
-        ${infoItem('Fecha de compra', fdate(item.purchaseDate))}
+        ${infoItem('Fecha de compra',  fdate(item.purchaseDate))}
         ${infoItem('Precio de compra', fmx(item.purchasePrice))}
       </div>
     </div>
 
-    <!-- Garantía -->
     <div class="w3-card-4 section-card">
       <div class="section-title">🛡 Garantía</div>
       ${item.warrantyHas ? `
         <div class="info-grid">
-          ${infoItem('Proveedor',   item.warrantyProvider || '—')}
-          ${infoItem('Vence',       fdate(item.warrantyExpiry))}
-        </div>` : `<p style="color:var(--muted);font-size:13px;margin:0">Sin garantía registrada</p>`}
+          ${infoItem('Proveedor', item.warrantyProvider || '—')}
+          ${infoItem('Vence',     fdate(item.warrantyExpiry))}
+        </div>` : `<p class="section-empty">Sin garantía registrada</p>`}
     </div>
 
-    <!-- Seguro -->
     <div class="w3-card-4 section-card">
       <div class="section-title">🔐 Seguro</div>
       ${item.insuranceHas ? `
@@ -406,14 +401,13 @@ async function openDetail(id) {
           ${infoItem('Aseguradora',    item.insuranceProvider || '—')}
           ${infoItem('No. de póliza', item.insurancePolicyNumber || '—', true)}
           ${infoItem('Vigencia',       fdate(item.insuranceExpiry))}
-        </div>` : `<p style="color:var(--muted);font-size:13px;margin:0">Sin seguro registrado</p>`}
+        </div>` : `<p class="section-empty">Sin seguro registrado</p>`}
     </div>
 
-    <!-- Notas -->
     ${item.notes ? `
       <div class="w3-card-4 section-card">
         <div class="section-title">📝 Notas</div>
-        <p style="font-family:var(--font-b);font-size:14px;color:var(--dim);line-height:1.6;margin:0">${esc(item.notes)}</p>
+        <p class="notes-text">${esc(item.notes)}</p>
       </div>` : ''}
   `;
 
@@ -540,10 +534,10 @@ function showReportModal() {
   document.getElementById('r-status').value  = 'lost';
   document.getElementById('r-date').value    = new Date().toISOString().split('T')[0];
   document.getElementById('r-details').value = '';
-  document.getElementById('modal-report').style.display = 'flex';
+  document.getElementById('modal-report').classList.add('open');
 }
 function closeReportModal() {
-  document.getElementById('modal-report').style.display = 'none';
+  document.getElementById('modal-report').classList.remove('open');
 }
 
 async function submitReport() {
@@ -559,7 +553,7 @@ async function submitReport() {
 
   if (res.success) {
     closeReportModal();
-    openDetail(state.selectedId); // Recargar detalle
+    openDetail(state.selectedId);
   } else {
     alert('Error al guardar el reporte: ' + (res.message || ''));
   }
@@ -577,29 +571,57 @@ async function confirmDelete(id) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   INIT
+   INIT – Event listeners
 ═══════════════════════════════════════════════════════════ */
 async function init() {
-  // Cargar datos de muestra si no hay nada guardado
   const existing = LocalDB.load();
   if (!existing.length) LocalDB.save(SAMPLE);
 
-  // Detectar API
   await detectApi();
 
   if (apiOnline) {
-    // Modo online: se requiere sesión activa
     if (!Auth.isLoggedIn()) {
       showLoginPage();
       return;
     }
     updateUserUI();
   }
-  // Modo offline: usa LocalDB, sin auth
 
   loadDashboard();
 
-  // Búsqueda en tiempo real
+  // ── Elementos estáticos ──────────────────────────────────
+  document.getElementById('nav-logo')
+    .addEventListener('click', loadDashboard);
+  document.querySelector('[data-page="dashboard"]')
+    .addEventListener('click', loadDashboard);
+  document.querySelector('[data-page="inventory"]')
+    .addEventListener('click', loadInventory);
+  document.getElementById('btn-signout')
+    .addEventListener('click', signOut);
+  document.getElementById('btn-nav-add')
+    .addEventListener('click', openAddForm);
+  document.getElementById('btn-inv-add')
+    .addEventListener('click', openAddForm);
+  document.getElementById('btn-form-cancel-top')
+    .addEventListener('click', loadInventory);
+  document.getElementById('btn-form-cancel')
+    .addEventListener('click', loadInventory);
+  document.getElementById('btn-save')
+    .addEventListener('click', saveForm);
+  document.getElementById('f-warranty-has')
+    .addEventListener('change', toggleWarrantyFields);
+  document.getElementById('f-insurance-has')
+    .addEventListener('change', toggleInsuranceFields);
+  document.getElementById('btn-modal-close')
+    .addEventListener('click', closeReportModal);
+  document.getElementById('btn-modal-cancel')
+    .addEventListener('click', closeReportModal);
+  document.getElementById('btn-modal-submit')
+    .addEventListener('click', submitReport);
+  document.getElementById('modal-report')
+    .addEventListener('click', e => { if (e.target.id === 'modal-report') closeReportModal(); });
+
+  // ── Búsqueda ─────────────────────────────────────────────
   let searchTimer;
   document.getElementById('search-input').addEventListener('input', e => {
     clearTimeout(searchTimer);
@@ -607,6 +629,45 @@ async function init() {
       state.filter.search = e.target.value;
       refreshInventory();
     }, 300);
+  });
+
+  // ── Delegación: dashboard ────────────────────────────────
+  document.getElementById('cat-list').addEventListener('click', e => {
+    const row = e.target.closest('.cat-row');
+    if (row) filterAndShow(row.dataset.cat);
+  });
+  document.getElementById('recent-list').addEventListener('click', e => {
+    const row = e.target.closest('.recent-row');
+    if (row) openDetail(row.dataset.id);
+  });
+  document.getElementById('incident-list').addEventListener('click', e => {
+    const row = e.target.closest('.recent-row');
+    if (row) openDetail(row.dataset.id);
+  });
+
+  // ── Delegación: inventario ───────────────────────────────
+  document.getElementById('cat-pills').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (pill) setCatFilter(pill.dataset.cat);
+  });
+  document.getElementById('status-pills').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (pill) setStatFilter(pill.dataset.status);
+  });
+  document.getElementById('eq-grid').addEventListener('click', e => {
+    const card = e.target.closest('.eq-card');
+    if (card) openDetail(card.dataset.id);
+  });
+
+  // ── Delegación: detalle ──────────────────────────────────
+  document.getElementById('page-detail').addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const action = el.dataset.action;
+    if      (action === 'back')   loadInventory();
+    else if (action === 'edit')   openEditForm(el.dataset.id);
+    else if (action === 'report') showReportModal();
+    else if (action === 'delete') confirmDelete(el.dataset.id);
   });
 }
 

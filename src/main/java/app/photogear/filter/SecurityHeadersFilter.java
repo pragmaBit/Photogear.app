@@ -9,19 +9,15 @@ import java.io.IOException;
 /**
  * Añade cabeceras de seguridad a todas las respuestas (defensa en profundidad,
  * complementa al WAF mod_security). Alineado con OWASP Secure Headers Project.
- *
- * Nota sobre CSP: el frontend usa manejadores de eventos en línea (onclick=...)
- * y bloques &lt;style&gt; en línea, por lo que script-src/style-src requieren
- * 'unsafe-inline'. El resto de la política es restrictiva (default-src 'self').
  */
 public class SecurityHeadersFilter implements Filter {
 
     private static final String CSP = String.join("; ",
         "default-src 'self'",
-        // Scripts propios + manejadores inline + Google Identity Services
-        "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.w3schools.com",
-        // Estilos propios + inline + W3.CSS + Google Fonts
-        "style-src 'self' 'unsafe-inline' https://www.w3schools.com https://fonts.googleapis.com",
+        // Scripts propios + Google Identity Services (sin unsafe-inline)
+        "script-src 'self' https://accounts.google.com https://www.w3schools.com",
+        // Estilos propios + W3.CSS + Google Fonts (sin unsafe-inline)
+        "style-src 'self' https://www.w3schools.com https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         // Avatares de usuario de Google
         "img-src 'self' data: https://*.googleusercontent.com",
