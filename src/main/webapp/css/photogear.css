@@ -419,8 +419,104 @@ a:hover { color: var(--accent2); }
 .api-pill.online  { background: rgba(82,183,136,.15); color: var(--green); }
 .api-pill.offline { background: rgba(212,168,67,.15); color: var(--yellow); }
 
+/* ── Login page ─────────────────────────────────────────────── */
+#page-login { min-height:100vh; display:flex; align-items:center;
+              justify-content:center; background:var(--bg); }
+.login-card { background:var(--card); border-radius:16px;
+              padding:48px 40px; max-width:400px; width:90%;
+              box-shadow:0 8px 32px rgba(0,0,0,.35); text-align:center; }
+.login-logo { font-family:var(--font-d); font-size:22px;
+              color:var(--accent); margin-bottom:24px; }
+.login-title { font-family:var(--font-d); font-size:26px;
+               color:var(--fg); margin:0 0 10px; }
+.login-sub  { color:var(--muted); font-size:14px;
+              line-height:1.6; margin:0 0 32px; }
+#google-signin-btn { display:flex; justify-content:center; margin-bottom:16px; }
+.login-error { color:var(--red); font-size:13px;
+               margin-bottom:12px; padding:10px;
+               background:rgba(224,82,82,.1); border-radius:8px; }
+.login-hint { color:var(--muted); font-size:12px; margin-top:20px; line-height:1.5; }
+.no-config-msg { color:var(--yellow); font-size:13px; padding:12px;
+                 background:rgba(212,168,67,.1); border-radius:8px;
+                 margin-bottom:12px; }
+
+/* ── User info en navbar ─────────────────────────────────────── */
+.user-info   { display:flex; align-items:center; gap:10px; margin-right:12px; }
+.user-avatar { width:30px; height:30px; border-radius:50%;
+               object-fit:cover; border:2px solid var(--accent); }
+.user-name   { color:var(--fg); font-size:13px; font-family:var(--font-m);
+               max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ── Estado inicial de elementos hidden ──────────────────────── */
+#user-info       { display: none; }
+#user-avatar     { display: none; }
+#incident-banner { display: none; }
+#login-no-config { display: none; }
+#login-error     { display: none; }
+#warranty-fields { display: none; }
+#insurance-fields{ display: none; }
+#modal-report    { display: none; align-items: center; justify-content: center; }
+#modal-report.open { display: flex; }
+
+/* ── Navbar: texto secundario ───────────────────────────────── */
+.nav-logo-muted  { color: var(--muted); }
+.login-logo-muted{ color: var(--muted); }
+#api-status      { margin-right: 8px; }
+
+/* ── Stat card colors ────────────────────────────────────────── */
+.stat-accent { color: var(--accent); }
+.stat-green  { color: var(--green);  }
+.stat-dim    { color: var(--dim);    }
+.stat-yellow { color: var(--yellow); }
+.stat-red    { color: var(--red);    }
+
+/* ── Pills row ───────────────────────────────────────────────── */
+.pills-row        { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pills-row-status { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+/* ── Search input indent ─────────────────────────────────────── */
+#search-input { padding-left: 36px; }
+
+/* ── Form page header spacing ────────────────────────────────── */
+.form-page-header { margin-bottom: 24px; }
+
+/* ── Modal ───────────────────────────────────────────────────── */
+.modal-content  { max-width:480px; width:90%; border-radius:12px; padding:28px; }
+.modal-header   { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.modal-title    { font-family:var(--font-d); color:var(--red); margin:0; font-size:18px; }
+.modal-field    { margin-bottom: 16px; }
+.modal-field-lg { margin-bottom: 24px; }
+.modal-textarea { min-height: 100px; }
+.modal-actions  { display:flex; gap:10px; justify-content:flex-end; }
+
+/* ── Condition dot colors ────────────────────────────────────── */
+.dot-excellent { background: #52b788; }
+.dot-good      { background: #95d5b2; }
+.dot-fair      { background: #d4a843; }
+.dot-poor      { background: #e05252; }
+
+/* ── Detail page layout ──────────────────────────────────────── */
+.detail-header-body { display:flex; align-items:flex-start; gap:16px; }
+.detail-cat-icon    { font-size:36px; line-height:1; }
+.detail-body-text   { flex:1; }
+.detail-badges      { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+.notes-text         { font-family:var(--font-b); font-size:14px; color:var(--dim); line-height:1.6; margin:0; }
+.section-empty      { color:var(--muted); font-size:13px; margin:0; }
+
+/* ── Dashboard recent / incident lists ───────────────────────── */
+.recent-body        { flex:1; min-width:0; }
+.incident-item-row  { border-bottom:1px solid rgba(224,82,82,.15); }
+.incident-item-name { font-size:13px; margin-left:4px; }
+.incident-item-serial { font-family:var(--font-m); font-size:11px; color:var(--muted); margin-left:8px; }
+
+/* ── Equipment card ──────────────────────────────────────────── */
+.thumb-lg  { width:42px; height:42px; font-size:22px; }
+.eq-price  { font-family:var(--font-m); font-size:12px; color:var(--muted); }
+
+/* ── Empty state full-width in grid ─────────────────────────── */
+.span-full { grid-column: 1 / -1; }
+
 /* ── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 768px) {
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .two-col   { grid-template-columns: 1fr; }
   .form-row  { grid-template-columns: 1fr; }
