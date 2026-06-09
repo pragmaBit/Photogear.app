@@ -181,3 +181,57 @@ photogear/
 
 - **Pool de conexiones**: incluido vía HikariCP. Ajusta los parámetros
   `hikari.*` en `config.properties` según la carga esperada.
+
+---
+
+## Seguridad
+
+La aplicación está endurecida para operar detrás de un WAF (mod_security /
+OWASP CRS) y cumplir buenas prácticas OWASP.
+
+### Cabeceras de seguridad (`SecurityHeadersFilter`)
+Se aplican a toda respuesta:
+
+| Cabecera | Valor |
+|----------|-------|
+| `Content-Security-Policy` | `default-src 'self'` + orígenes de Google/W3.CSS/Fonts |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` (+ `frame-ancestors 'none'`) |
+| `Referrer-Policy` | `no-referrer` |
+| `Permissions-Policy` | cámara/micrófono/geo deshabilitados |
+| `Cross-Origin-Opener-Policy` | `same-origin-allow-popups` |
+| `Strict-Transport-Security` | `max-age=31536000` (solo sobre HTTPS) |
+| `Cache-Control: no-store` | en respuestas `/api/*` |
+
+> La CSP usa `'unsafe-inline'` en `script-src`/`style-src` porque el frontend
+> emplea manejadores en línea (`onclick`). Para una CSP estricta con nonces
+> habría que refactorizar esos manejadores.
+
+### Gestión de secretos
+`AppConfig` resuelve cada clave en este orden: **propiedad JVM → variable de
+entorno → `config.properties`**. Inyecta los secretos por entorno (no en el WAR):
+
+```bash
+export JWT_SECRET="$(openssl rand -base64 48)"
+export MARIADB_PASSWORD="…"
+export CORS_ALLOWED_ORIGINS="https://tuapp.com"
+```
+
+La app **no arranca** si `jwt.secret` es el valor de ejemplo o mide < 32 caracteres.
+
+### CORS
+Lista blanca de orígenes (no se refleja un `Origin` arbitrario). `*` queda
+reservado para desarrollo y es incompatible con credenciales.
+
+### Validación y manejo de errores
+- Entradas validadas contra listas blancas (categoría, estado, condición) y
+  límites de longitud; toda la persistencia usa `PreparedStatement`.
+- Los errores 5xx devuelven un mensaje genérico; el detalle solo va al log
+  (sin fuga de SQL, rutas ni versiones).
+- Páginas de error propias evitan que el contenedor exponga stack traces.
+
+### Recomendaciones de despliegue (fuera de la app)
+- Terminar TLS en Apache/WAF y propagar `X-Forwarded-Proto: https`.
+- En Tomcat: `server.xml` con `server=" "`, `xpoweredBy="false"`,
+  `allowTrace="false"`, y deshabilitar el listado de directorios.
+- Mantener mod_security con OWASP CRS en modo bloqueo.

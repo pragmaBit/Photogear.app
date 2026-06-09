@@ -6,28 +6,46 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * Filtro CORS configurable en tres niveles (orden de prioridad):
- *   1. Propiedad JVM:    -Dcors.allowed.origins=https://tuapp.com
- *   2. config.properties: cors.allowed.origins=https://tuapp.com
- *   3. web.xml init-param: allowedOrigins (fallback para sobreescritura por despliegue)
- *   4. Default: * (solo para desarrollo; no usar en producción)
+ * Filtro CORS basado en lista blanca de orígenes.
+ *
+ * Configuración (orden de prioridad):
+ *   1. Propiedad JVM:     -Dcors.allowed.origins=https://app1.com,https://app2.com
+ *   2. config.properties: cors.allowed.origins
+ *   3. web.xml init-param: allowedOrigins
+ *   4. Default: * (solo desarrollo)
+ *
+ * Seguridad: con una lista explícita, el filtro solo refleja el Origin de la
+ * petición si está en la lista (nunca un valor arbitrario), añade 'Vary: Origin'
+ * y habilita Allow-Credentials. El comodín '*' se reserva para desarrollo y es
+ * incompatible con credenciales según la especificación CORS.
  */
 public class CorsFilter implements Filter {
 
-    private String allowedOrigins;
+    private Set<String> allowedOrigins;
+    private boolean allowAll;
 
     @Override
     public void init(FilterConfig fc) {
-        String fromSystem = System.getProperty("cors.allowed.origins");
-        String fromConfig = AppConfig.get("cors.allowed.origins");
-        String fromParam  = fc.getInitParameter("allowedOrigins");
+        String configured = firstNonBlank(
+            System.getProperty("cors.allowed.origins"),
+            AppConfig.get("cors.allowed.origins"),
+            fc.getInitParameter("allowedOrigins"),
+            "*"
+        );
 
-        allowedOrigins = fromSystem != null ? fromSystem
-                       : fromConfig != null ? fromConfig
-                       : fromParam  != null ? fromParam
-                       : "*";
+        allowAll = "*".equals(configured.trim());
+        allowedOrigins = allowAll
+            ? new HashSet<>()
+            : Arrays.stream(configured.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
     }
 
     @Override
@@ -37,10 +55,20 @@ public class CorsFilter implements Filter {
         HttpServletRequest  req  = (HttpServletRequest)  request;
         HttpServletResponse resp = (HttpServletResponse) response;
 
-        resp.setHeader("Access-Control-Allow-Origin",  allowedOrigins);
+        String origin = req.getHeader("Origin");
+
+        if (allowAll) {
+            resp.setHeader("Access-Control-Allow-Origin", "*");
+        } else if (origin != null && allowedOrigins.contains(origin)) {
+            resp.setHeader("Access-Control-Allow-Origin", origin);
+            resp.setHeader("Access-Control-Allow-Credentials", "true");
+            resp.addHeader("Vary", "Origin");
+        }
+        // Si el origen no está permitido, no se emite ACAO y el navegador bloquea.
+
         resp.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
-        resp.setHeader("Access-Control-Max-Age",       "3600");
+        resp.setHeader("Access-Control-Max-Age", "3600");
 
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
             resp.setStatus(HttpServletResponse.SC_OK);
@@ -48,6 +76,13 @@ public class CorsFilter implements Filter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            if (v != null && !v.isBlank()) return v;
+        }
+        return "*";
     }
 
     @Override
